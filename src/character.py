@@ -52,10 +52,11 @@ class Character:
             with open(self.memory, "r", encoding="utf-8") as file:
                 print(f"{Fore.YELLOW}Postava si právě vzpoměla o čem jste se bavili minule.{Style.RESET_ALL}")
                 return json.load(file)
-        print(f"{Fore.YELLOW}Konverzace nenalezena, začínáme novou.{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Konverzace nenalezena, postova přichází do nové konverzace.{Style.RESET_ALL}")
         return []
 
     def add_message(self, role: str, participant: str, content: str) -> None:
         """Přidá zprávu do seznamu zpráv postavy."""
         new_message = {"role": role, "content": f"{participant}: {content}"}
+        print(f"{Fore.GREEN}🧠: {new_message}{Style.RESET_ALL}")
         self.messages.append(new_message)
