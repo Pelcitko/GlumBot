@@ -4,7 +4,6 @@ import os
 
 # Získání kořenového adresáře projektu
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print("ROOT_DIR:", ROOT_DIR)
 
 config = configparser.ConfigParser()
 config.read(os.path.join(ROOT_DIR, 'config.ini'))

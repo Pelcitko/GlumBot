@@ -5,6 +5,7 @@ from colorama import Fore, Style, init
 import openai
 from character import Character
 from fbm import MessengerClient
+from fbchat import ThreadType
 from config import FB_EMAIL, FB_PASSWORD, ROOT_DIR
 
 # Konstanty
@@ -73,12 +74,15 @@ def handle_send(glum):
         return None
 
 def main():
-    print(Fore.CYAN + "Vítejte v chatbotu. Zadejte 'quit' pro ukončení." + Style.RESET_ALL)
-    participants = get_participants()
     glum = load_character()
     with open("session.json") as f:
         cookies = json.load(f)
-    fb_client = MessengerClient(FB_EMAIL, FB_PASSWORD, max_tries=3, session_cookies=cookies, logging_level=logging.DEBUG)
+    fb_client = MessengerClient(FB_EMAIL, FB_PASSWORD, max_tries=1, session_cookies=cookies, logging_level=logging.INFO)
+    thread_id = "2853571361363788"
+    
+    print(Fore.CYAN + "Vítejte v chatbotu. Zadejte 'quit' pro ukončení." + Style.RESET_ALL)
+    print(f"{Fore.LIGHTBLUE_EX}Participant: {fb_client.fetch_participants(thread_id)}{Style.RESET_ALL}")
+    participants = get_participants()
 
     while True:
         print()  # Prázdný řádek pro lepší orientaci
@@ -87,13 +91,16 @@ def main():
         if participant_name == 'quit':
             print(f"{Fore.YELLOW}{glum} jde spát a memoruje. 💤{Style.RESET_ALL}")
             glum.save_conversation()
+            cookies = fb_client.getSession()
+            with open("session.json", "w") as f:
+                json.dump(cookies, f)
             break
 
         if participant_name == 'send':
             response = handle_send(glum)
             if response:
                 print(f'{Fore.GREEN}{response}{Style.RESET_ALL}\n')
-                fb_client.send_message(response, "100001652267336")
+                fb_client.send_message(response, thread_id, thread_type=ThreadType.GROUP)
                 glum.add_message("system", glum, response)
             continue
 

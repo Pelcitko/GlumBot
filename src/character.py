@@ -34,7 +34,7 @@ class Character:
             logit_bias=logit_bias,
             presence_penalty=presence_penalty
         )
-        self.memory = f"memory_of_{name}.json"
+        self.memory = os.path.join("characters_memory", f"{name}.json")
         self.messages = self.load_conversation()
 
     def __str__(self) -> str:
