@@ -40,6 +40,9 @@ ENV/
 
 # Konfigurační soubory aplikace
 /config.py
+/secrets.py
+/secret.py
+
 
 # Pipenv
 .Pipfile

@@ -1,2 +1,0 @@
-OPENAI_API_KEY = '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'
-ORGANIZATION_ID = 'org-HnQXp2G7u9TyDBosuR7u16Ot'

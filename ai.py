@@ -1,8 +1,7 @@
 import openai
-import logging
 from colorama import Fore, Style
 import tiktoken
-from secret import OPENAI_API_KEY
+from secrets import OPENAI_API_KEY
 
 openai.api_key = OPENAI_API_KEY
 DEAFAULT_MODEL = "gpt-3.5-turbo"
@@ -27,37 +26,38 @@ class AI:
         self.user = user
 
     def get_response(self, messages: list[dict[str, str]]):
-        # logging.debug(f'Sending: {messages}')
         print(f'{Fore.LIGHTBLACK_EX}Sending: {messages}{Style.RESET_ALL}\n')
 
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                logit_bias=self.logit_bias,
-                presence_penalty=self.presence_penalty
-            )
-            # logging.debug(f'Received: {response}')
-            print(f'{Fore.LIGHTBLACK_EX}Received: {response}{Style.RESET_ALL}\n')
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=messages,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            logit_bias=self.logit_bias,
+            presence_penalty=self.presence_penalty
+        )
+        print(f'{Fore.LIGHTBLACK_EX}Received: {response}{Style.RESET_ALL}\n')
 
-            message = response['choices'][0]['message']['content'].strip()
-            return message
-        except Exception as e:
-            logging.error(f'Error: {e}')
+        return response['choices'][0]['message']['content'].strip()
             
 
-    def prune_messages(self, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    def prune_messages(self, messages: list[dict[str, str]], prune_ratio: float) -> list[dict[str, str]]:
         """
-        Ořeže seznam zpráv tak, aby celkový počet tokenů nepřekročil max_tokens.
+        Ořeže seznam zpráv na základě zadaného prune_ratio nebo odstraní zprávy tak, aby celkový počet tokenů nepřekročil max_tokens.
 
         :param messages: Seznam zpráv ke zpracování.
+        :param prune_ratio: Poměr zpráv ke smazání (0-1) nebo -1 pro odstranění jedné zprávy. Pokud je hodnota 0, bude seznam ořezáván tak, aby celkový počet tokenů nepřekročil max_tokens.
         :return: Ořezaný seznam zpráv.
         """
-        while self.num_tokens_from_messages(messages) > self.max_tokens:
-            messages.pop(0)
-        return messages
+        if prune_ratio:
+            prune_length = int(len(messages) * prune_ratio)
+            return messages[prune_length:]
+        elif prune_ratio == -1:
+            return messages.pop(0)
+        else:
+            while self.num_tokens_from_messages(messages) > self.max_tokens:
+                messages.pop(0)
+            return messages
 
     def num_tokens_from_messages(self, messages: list[dict[str, str]], model: str = DEAFAULT_MODEL) -> int:
         """
