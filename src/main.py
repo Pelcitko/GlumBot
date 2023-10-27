@@ -5,7 +5,7 @@ from colorama import Fore, Style, init
 import openai
 from character import Character
 from fbm import MessengerClient
-from secrets import FB_EMAIL, FB_PASSWORD
+from config import FB_EMAIL, FB_PASSWORD, ROOT_DIR
 
 # Konstanty
 PROMPT_CHARACTER = f"Zadejte postavu"
@@ -14,7 +14,8 @@ PROMPT_SEND = ", nebo 'send' pro odeslání konverzace: "
 init()  # Inicializace colorama
 
 
-def load_character(config_file='character_config.json'):
+def load_character(config_file='Glum.json'):
+    config_file = os.path.join(ROOT_DIR, 'characters', config_file)
     default_config = {
         'name': 'No One',
         'character_setting': 'Jsi charakter ze Hry o trůny, jsi Nikdo. Nikdo je ztělesněním emocionálního odloučení, je nemilosrdný a chladnokrevný. Vyhýbáš se osobním zájmenům a čehokoliv, co by odhalilo osobní identitu. Nikdo mluví stručně a neosobně.'

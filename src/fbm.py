@@ -1,7 +1,8 @@
 from fbchat import Client, ThreadType
 from fbchat.models import Message
 
-from secrets import FB_EMAIL, FB_PASSWORD
+from config import FB_EMAIL, FB_PASSWORD
+
 
 class MessengerClient(Client):
     def send_message(self, message, thread_id, thread_type=ThreadType.USER):

@@ -4,6 +4,7 @@ from colorama import Fore, Style
 
 from ai import AI
 
+
 class Character:
     def __init__(
         self, 

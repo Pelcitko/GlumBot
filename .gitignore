@@ -39,10 +39,12 @@ venv/
 ENV/
 
 # Konfigurační soubory aplikace
-/config.py
-/secrets.py
-/secret.py
+config.ini
+session.json
+*secret*
 
+# Soubory s aplikace
+characters_memory/*
 
 # Pipenv
 .Pipfile

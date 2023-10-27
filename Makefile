@@ -14,7 +14,7 @@ update:
 
 # Spustí hlavní skript programu
 start:
-	poetry run python main.py
+	poetry run python src/main.py
 
 # Kontroluje formátování kódu pomocí black a flake8
 check:

@@ -1,10 +1,10 @@
 import openai
 from colorama import Fore, Style
 import tiktoken
-from secrets import OPENAI_API_KEY
+from config import OPENAI_API_KEY, DEAFAULT_MODEL
 
 openai.api_key = OPENAI_API_KEY
-DEAFAULT_MODEL = "gpt-3.5-turbo"
+
 
 class AI:
     def __init__(self, user:str, model: str = DEAFAULT_MODEL, temperature=None, max_tokens=None, logit_bias=None, presence_penalty=None):
