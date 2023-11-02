@@ -1,16 +1,24 @@
 # Makefile pro základní operace s Poetry a spouštění programu
-
-# Spustí virtuální prostředí Poetry
-shell:
-	poetry shell
+# Instaluje Poetry, pokud není nalezena v systému.
+install-poetry:
+	@if [ -z "$(shell which poetry 2>/dev/null)" ]; then \
+		echo "Instalace Poetry..."; \
+		curl -sSL https://install.python-poetry.org | python3 -; \
+	else \
+		echo "Poetry je již nainstalováno."; \
+	fi
 
 # Instaluje závislosti projektu
-install:
+install: install-poetry
 	poetry install
 
 # Aktualizuje závislosti projektu
 update:
 	poetry update
+
+# Spustí virtuální prostředí Poetry
+shell:
+	poetry shell
 
 # Spustí hlavní skript programu
 start:

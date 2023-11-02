@@ -1,43 +1,59 @@
-# fbm.py
+# messenger_client.py
 from colorama import Fore, Style
+import logging
 from fbchat import Client, ThreadType, Thread
 from fbchat.models import Message
 from openai import OpenAIError 
 from character import Character
 
-from config import FB_EMAIL, FB_PASSWORD, NO_ONE
+logging.basicConfig(level=logging.INFO, format=f"{Fore.BLUE}%(message)s{Style.RESET_ALL}")
+
 
 class MessengerClient(Client):
-    
+
     def __init__(self, email, password, max_tries=2, session_cookies=None):
         super().__init__(email, password, max_tries=max_tries, session_cookies=session_cookies)
-        self.character: Character = NO_ONE  # Přiřazení defaultní postavy
-        self.thread: Thread = None  # ID konverzačního vlákna
-        self.participannts: dict = {}  # Seznam účastníků konverzace
+        # self.character: Character = NO_ONE  # Přiřazení defaultní postavy
+        self.threads: dict[str, Thread] = {}  # Seznam konverzačních vláken
+        self.threads_participants: dict[str, dict] = {}  # Seznamy účastníků ve vlákenech
+        self.threads_auto_response: dict[str, bool] = {}  # Nastavení kdy bot odpovídá automaticky
 
-    def set_conversation(self, thread_id):
-        self.thread = self.fetchThreadInfo(thread_id)[thread_id]
-        self.participants = self.fetch_participants(self.thread)
-        self.setDefaultThread(thread_id, ThreadType.GROUP)
+    def set_conversation(self, thread_id: str, auto_response: bool = False) -> Thread:
+        if thread_id not in self.threads:
+            thread = self.fetchThreadInfo(thread_id)[thread_id]
+            self.threads[thread_id] = thread
+            logging.info(f"Added thread: {thread}")
 
-    def fetch_participants(self, thread: Thread) -> dict[str, dict[str, str]]:
+            self.threads_participants[thread_id] = self.fetch_participants(thread)
+            self.threads_auto_response[thread_id] = auto_response
+        return self.threads[thread_id]
+
+    def fetch_participants(self, thread: Thread) -> dict[str, dict[str, str|bool]]:
         """
-        Získá seznam účastníků chatu ve zvoleném vláknu.
-
-        :param thread: Objekt vlákna.
-        :return: Slovník účastníků chatu.
+        Fetches the list of participants in a given thread.
+        
+        :param thread: Thread object.
+        :return: Dictionary of participants in the chat.
         """
-        print(f"{Fore.LIGHTBLUE_EX}Thread info: {thread}{Style.RESET_ALL}")
-        user_ids = thread.participants
         participants = {}
-        for user_id in user_ids:
-            user_info = self.fetchUserInfo(user_id)[user_id]
-            participants[user_id] = {
-                "name": user_info.name,
-                "nickname": thread.nicknames.get(user_id, ""),
-                "is_friend": user_info.is_friend,
+        if thread.type == ThreadType.USER:
+            participants = {
+                "name": thread.name,
+                "nickname": thread.nickname,
+                "is_friend": thread.is_friend,
             }
-        print(f"{Fore.LIGHTBLUE_EX}Participants: {participants}{Style.RESET_ALL}")
+
+        elif thread.type == ThreadType.GROUP:
+            user_ids = thread.participants
+            for user_id in user_ids:
+                user_info = self.fetchUserInfo(user_id)[user_id]
+                participants[user_id] = {
+                    "name": user_info.name,
+                    "nickname": thread.nicknames.get(user_id, ""),
+                    "is_friend": user_info.is_friend,
+                }
+
+        logging.info(f"Participants: {participants}")
         return participants
 
     def get_participant_name(self, participant_id):

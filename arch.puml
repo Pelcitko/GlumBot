@@ -1,0 +1,76 @@
+@startuml
+' !theme sketchy-outline
+
+AI --> Character : -ai
+MemoryManager --> Conversation : -memory
+Character --> BotManager : -available_characters
+CharacterFactory ..> Character : <<creates>>
+Conversation --> BotManager : -conversations
+Client <|-- MessengerClient : -fbchat
+MessengerClient <|-- BotManager : -messenger
+BotManager --> Main : -bot_manager
+
+class AI {
+    +get_response(): string
+    +inform_prune(): float
+    +__init__(): void
+    -model: string
+    -temperature: float
+    -max_tokens: int
+    -logit_bias: dict
+    -presence_penalty: float
+    -user: string
+}
+
+class Character {
+    +__init__(ai: AI): void
+    +__str__(): string
+    +add_message(message: string): void
+    -name: string
+    -character_setting: dict
+    -ai: AI
+}
+
+class MemoryManager {
+    +save(): void
+    +load(): void
+    +manage_history(): void
+    -history: list[dict]
+    -memory_file: string
+}
+
+class Conversation {
+    +__init__(): void
+    +add_message(message: string): void
+    +handle_send(): void
+    +get_participant_name(): string
+    -thread: Thread
+    -participants: dict[string, string|float]
+    -memory: MemoryManager
+}
+
+class MessengerClient {
+    +fetch_participants(): list
+    +get_participant_name(): string
+    +onMessage(): void
+    +send_message(message: string): void
+}
+
+class BotManager {
+    +__init__(): void
+    +initialize(): void
+    +run(): void
+    +shutdown(): void
+    -messenger: MessengerClient
+    -available_characters: list[Character]
+    -conversations: list[Conversation]
+}
+
+class CharacterFactory {
+    +create_character(): Character
+}
+
+class Main {
+    main(): void
+}
+@enduml

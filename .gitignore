@@ -30,7 +30,6 @@ MANIFEST
 
 # Poetry
 /poetry.lock
-/pyproject.toml
 
 # Virtual environments
 *.venv

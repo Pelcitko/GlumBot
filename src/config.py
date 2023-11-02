@@ -10,10 +10,13 @@ config.read(os.path.join(ROOT_DIR, 'config.ini'))
 
 FB_EMAIL = config['Facebook']['email']
 FB_PASSWORD = config['Facebook']['password']
+FB_COOKIES = os.path.join(
+    ROOT_DIR,
+    config['Facebook'].get('cookies', 'session.json')
+)
 
 OPENAI_API_KEY = config['OpenAI']['api_key']
-
-DEAFAULT_MODEL = "gpt-3.5-turbo"
+DEAFAULT_MODEL = config['OpenAI'].get('model', 'gpt-3.5-turbo')
 
 # Vzorová postava
 GLUM = {

@@ -27,7 +27,7 @@ class Character:
         """
         self.name = name
         self.character_setting = character_setting
-        self.ai = AI(
+        self.ai: AI = AI(
             user=name,
             temperature=temperature,
             max_tokens=max_tokens,

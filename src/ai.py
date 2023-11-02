@@ -1,7 +1,11 @@
+import logging
 import openai
 from colorama import Fore, Style
 import tiktoken
 from config import OPENAI_API_KEY, DEAFAULT_MODEL
+
+# Initialize logging
+logging.basicConfig(format=f'{Fore.LIGHTBLACK_EX}%(message)s{Style.RESET_ALL}', level=logging.INFO)
 
 openai.api_key = OPENAI_API_KEY
 
@@ -9,7 +13,7 @@ openai.api_key = OPENAI_API_KEY
 class AI:
     def __init__(self, user:str, model: str = DEAFAULT_MODEL, temperature=None, max_tokens=None, logit_bias=None, presence_penalty=None):
         """
-        Inicializuje instanci AI s danými nastaveními.
+        Initialize an instance of AI with given settings.
 
         :param model: Název modelu, který bude použit pro generování textu. Defaultní je "gpt-3.5-turbo".
         :param temperature: Hodnota (0-1) řídící náhodnost generovaného textu. Nižší hodnoty vedou k více deterministickému textu. Defaultní je 1.
@@ -26,18 +30,25 @@ class AI:
         self.user = user
 
     def get_response(self, messages: list[dict[str, str]]):
-        print(f'{Fore.LIGHTBLACK_EX}Sending: {messages}{Style.RESET_ALL}\n')
+        """
+        Fetch a response from the OpenAI API.
+        """
+        logging.info(f'Sending: {messages}')
 
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            logit_bias=self.logit_bias,
-            presence_penalty=self.presence_penalty
-        )
-        print(f'{Fore.LIGHTBLACK_EX}Received: {response}{Style.RESET_ALL}\n')
+        try:
+            response = openai.ChatCompletion.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                logit_bias=self.logit_bias,
+                presence_penalty=self.presence_penalty
+            )
+        except Exception as e:
+            logging.error(f'OpenAI API Error: {e}')
+            return "An error occurred."
 
+        logging.info(f'Received: {response}')
         return response['choices'][0]['message']['content'].strip()
             
 
@@ -61,7 +72,7 @@ class AI:
 
     def num_tokens_from_messages(self, messages: list[dict[str, str]], model: str = DEAFAULT_MODEL) -> int:
         """
-        Vypočte celkový počet tokenů ve zprávách na základě specifikace modelu.
+        Calculate the total number of tokens in the messages based on the model specification.
 
         :param messages: Seznam zpráv ke zpracování.
         :param model: Název modelu použitého pro výpočet počtu tokenů. Defaultní je "gpt-3.5-turbo".

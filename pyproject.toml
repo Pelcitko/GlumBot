@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "glumbot"
+version = "0.1.0"
+description = "A chatbot embodying Gollum from The Lord of the Rings, utilizing OpenAI's GPT and integrated with Facebook Messenger."
+authors = ["lpelc <pelc.it@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+openai = "^0.28.1"
+colorama = "^0.4.6"
+tiktoken = "^0.5.1"
+fbchat = "^1.9.7"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
