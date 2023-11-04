@@ -5,7 +5,7 @@ import signal
 from colorama import Fore, Style, init
 import openai
 from character import Character
-from messenger_client import MessengerClient
+from _messenger_client import MessengerClient
 from config import FB_EMAIL, FB_PASSWORD, ROOT_DIR
 
 init()  # Inicializace colorama
