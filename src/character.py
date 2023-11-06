@@ -1,19 +1,25 @@
-import json
-import os
-from colorama import Fore, Style
-
+# character.py
+import logging
 from ai import AI
+from log_formatter import CustomFormatter
 
 
 class Character:
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(CustomFormatter())
+    logger.addHandler(ch)
+
     def __init__(
         self, 
         name: str, 
         character_setting: str, 
-        temperature: float, 
-        max_tokens: int, 
-        logit_bias: dict[str, float], 
-        presence_penalty: float
+        temperature: float = 0.5, 
+        max_tokens: int = 512, 
+        logit_bias: dict[str, float] = None, 
+        presence_penalty: float = None
     ):
         """
         Inicializuje postavu se zadanými nastaveními.
@@ -34,29 +40,29 @@ class Character:
             logit_bias=logit_bias,
             presence_penalty=presence_penalty
         )
-        self.memory = os.path.join("characters_memory", f"{name}.json")
-        self.messages = self.load_conversation()
+        # self.memory = os.path.join("characters_memory", f"{name}.json")
+        # self.messages = self.load_conversation()
 
     def __str__(self) -> str:
         """Vrátí jméno postavy."""
         return self.name
 
-    def save_conversation(self) -> None:
-        """Uloží současnou konverzaci do souboru."""
-        with open(self.memory, "w", encoding="utf-8") as file:
-            json.dump(self.messages, file, indent=2)
+    # def save_conversation(self) -> None:
+    #     """Uloží současnou konverzaci do souboru."""
+    #     with open(self.memory, "w", encoding="utf-8") as file:
+    #         json.dump(self.messages, file, indent=2)
 
-    def load_conversation(self) -> list[dict[str, str]]:
-        """Načte konverzaci ze souboru nebo vrátí výchozí systémovou zprávu, pokud soubor neexistuje."""
-        if os.path.exists(self.memory):
-            with open(self.memory, "r", encoding="utf-8") as file:
-                print(f"{Fore.YELLOW}Postava si právě vzpoměla o čem jste se bavili minule.{Style.RESET_ALL}")
-                return json.load(file)
-        print(f"{Fore.YELLOW}Konverzace nenalezena, postova přichází do nové konverzace.{Style.RESET_ALL}")
-        return []
+    # def load_conversation(self) -> list[dict[str, str]]:
+    #     """Načte konverzaci ze souboru nebo vrátí výchozí systémovou zprávu, pokud soubor neexistuje."""
+    #     if os.path.exists(self.memory):
+    #         with open(self.memory, "r", encoding="utf-8") as file:
+    #             print(f"{Fore.YELLOW}Postava si právě vzpoměla o čem jste se bavili minule.{Style.RESET_ALL}")
+    #             return json.load(file)
+    #     print(f"{Fore.YELLOW}Konverzace nenalezena, postova přichází do nové konverzace.{Style.RESET_ALL}")
+    #     return []
 
-    def add_message(self, role: str, participant: str, content: str) -> None:
-        """Přidá zprávu do seznamu zpráv postavy."""
-        new_message = {"role": role, "content": f"{participant}: {content}"}
-        print(f"{Fore.GREEN}🧠: {new_message}{Style.RESET_ALL}")
-        self.messages.append(new_message)
+    # def add_message(self, role: str, participant: str, content: str) -> None:
+    #     """Přidá zprávu do seznamu zpráv postavy."""
+    #     new_message = {"role": role, "content": f"{participant}: {content}"}
+    #     print(f"{Fore.GREEN}🧠: {new_message}{Style.RESET_ALL}")
+    #     self.messages.append(new_message)

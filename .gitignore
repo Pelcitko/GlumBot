@@ -43,7 +43,10 @@ session.json
 *secret*
 
 # Soubory s aplikace
-characters_memory/*
+history/*
+
+# dočasné soubory návrhu
+*UML.txt
 
 # Pipenv
 .Pipfile

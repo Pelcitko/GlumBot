@@ -2,11 +2,15 @@
 ' !theme sketchy-outline
 
 AI --> Character : -ai
-MemoryManager --> Conversation : -memory
 Character --> BotManager : -available_characters
 CharacterFactory ..> Character : <<creates>>
 Conversation --> BotManager : -conversations
-Client <|-- MessengerClient : -fbchat
+Conversation --> Thread
+Conversation --> Character
+Conversation --> MemoryManager
+Client <|-- ClientManager : -fbchat
+ClientManager --> Character
+ClientManager --> Conversation
 MessengerClient <|-- BotManager : -messenger
 BotManager --> Main : -bot_manager
 
@@ -40,30 +44,39 @@ class MemoryManager {
 }
 
 class Conversation {
-    +__init__(): void
-    +add_message(message: string): void
-    +handle_send(): void
-    +get_participant_name(): string
-    -thread: Thread
-    -participants: dict[string, string|float]
-    -memory: MemoryManager
+    __str__()
+    set_character()
+    add_message()
+    handle_send()
+    get_participant_name()
+    get_participant_nickname()
+    get_participant_full_name()
+        thread : Thread 
+    thread_id : str 
+    participants : dict[str, dict] 
+    character : Character 
+    memory : MemoryManager 
+    auto_response
+    character
+    __init__(thread: Thread , thread_id: str , participants: dict[str, dict] , character: Character , memory: MemoryManager )
 }
 
-class MessengerClient {
-    +fetch_participants(): list
-    +get_participant_name(): string
-    +onMessage(): void
-    +send_message(message: string): void
-}
-
-class BotManager {
-    +__init__(): void
-    +initialize(): void
-    +run(): void
-    +shutdown(): void
-    -messenger: MessengerClient
-    -available_characters: list[Character]
-    -conversations: list[Conversation]
+class ClientManager {
+    set_conversation()
+    onMessage()
+    handle_send()
+    send_message()
+    initialize()
+    run()
+    shutdown()
+    save_session()
+    load_session()
+    load_characters()
+    load_character()
+    fetch_participants()
+    available_characters : dict[str, Character] 
+    conversations : dict[str, Conversation] 
+    __init__(available_characters: dict[str, Character] , conversations: dict[str, Conversation] )
 }
 
 class CharacterFactory {

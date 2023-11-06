@@ -1,117 +1,85 @@
+import signal
+import sys
 from openai import OpenAIError
 from character import Character  # Import Character třídy
-from colorama import Fore, Style
-from fbchat import Client, ThreadType, Thread
-from fbchat.models import Message
+from colorama import Fore, Style, init
+from fbchat import Client, ThreadType
+from fbchat.models import Message, Thread
 from config import FB_COOKIES, NO_ONE, ROOT_DIR
 import json
 import logging
 import os
 from conversation import Conversation
-
+from log_formatter import CustomFormatter
 from tools import json_load
 
-logging.basicConfig(level=logging.INFO, format=f"{Fore.BLUE}%(message)s{Style.RESET_ALL}")
+init(autoreset=True)  # Inicializace colorama
 
+# Nastavení loggeru
+logger = logging.getLogger(__name__)
+logger.propagate = False
+logger.handlers.clear() 
+handler = logging.StreamHandler()
+handler.setFormatter(CustomFormatter())
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 class ClientManager(Client):
+
     def __init__(self, email, password):
+        logger.info("Initializing the bot.")
         super().__init__(email, password, max_tries=2, session_cookies=self.load_session())
         self.available_characters: dict[str, Character] = {}  # postavy: {name: Character}
         self.conversations: dict[str, Conversation] = {}      # threads: {thread_id: Conversation}
 
-    def set_conversation(self, thread_id: str, auto_response: bool = False) -> Thread:
-        """
-        Sets up a conversation with a thread by fetching its information and participants.
-        If the thread is not already in the bot's threads, it will be added.
-        If auto_response is True, the bot will automatically respond to messages in the thread.
-        
-        Args:
-        - thread_id (str): The ID of the thread to set up a conversation with.
-        - auto_response (bool): Whether or not to automatically respond to messages in the thread.
-        
-        Returns:
-        - Thread: The thread object representing the conversation.
-        """
-        if thread_id not in self.threads:
+    def set_conversation(self, thread_id: str) -> Conversation:
+        if thread_id in self.conversations:
+            return self.conversations[thread_id]
+        else:
             thread = self.fetchThreadInfo(thread_id)[thread_id]
-            self.threads[thread_id] = thread
-            logging.info(f"Added thread: {thread}")
-
-            self.threads_participants[thread_id] = self.fetch_participants(thread)
-            self.threads_auto_response[thread_id] = auto_response
-        return self.threads[thread_id]
-
-    def fetch_participants(self, thread: Thread) -> dict[str, dict[str, str|bool]]:
-        """
-        Fetches the list of participants in a given thread.
+            if thread.type == ThreadType.USER:
+                auto_response = True
+            else:
+                auto_response = False
+            participant = self.fetch_participants(thread)
+            conversation = Conversation(thread, participant, auto_response)
+            bot_name = conversation.get_participant_nickname(self.uid)
+            character = self.available_characters.get(bot_name, self.available_characters['NO_ONE'])
+            conversation.set_character(character)
+            self.conversations[thread_id] = conversation
+            logger.info(f"Added thread: {conversation}")
+            return conversation
         
-        :param thread: Thread object.
-        :return: Dictionary of participants in the chat.
-        """
-        participants = {}
-        if thread.type == ThreadType.USER:
-            participants = {
-                "name": thread.name,
-                "nickname": thread.nickname,
-                "is_friend": thread.is_friend,
-            }
-
-        elif thread.type == ThreadType.GROUP:
-            user_ids = thread.participants
-            for user_id in user_ids:
-                user_info = self.fetchUserInfo(user_id)[user_id]
-                participants[user_id] = {
-                    "name": user_info.name,
-                    "nickname": thread.nicknames.get(user_id, ""),
-                    "is_friend": user_info.is_friend,
-                }
-
-        logging.info(f"Participants: {participants}")
-        return participants
-
-    def get_participant_name(self, participant_id):
-        """
-        Získá plné označení účastníka zadaného podle ID.
-
-        :param participant_id: ID účastníka.
-        :return: 'Přesdívka (Jméno Přijmení)'
-        """
-        return f"{self.participants[participant_id]['nickname']} ({self.participants[participant_id]['name']})"
+    def fetch_character(self, thread: Thread) -> Character:
+        bot_name = self.fetch_bot_name(thread)
+        logger.debug(f"Bot name: {bot_name}")
+        character = self.available_characters.get(bot_name, self.available_characters['NO_ONE'])
+        logger.debug(f"Character: {character}")
+        return character
 
     def onMessage(self, mid=None, author_id=None, message=None, message_object: Message=None, thread_id=None, thread_type=None, ts=None, metadata=None, msg={}):
-        """
-        Metoda je zavolána, když přijde nová zpráva.
-
-        :param mid: ID zprávy.
-        :param author_id: ID autora zprávy.
-        :param message: Text zprávy.
-        :param message_object: Objekt zprávy.
-        :param thread_id: ID vlákna.
-        :param thread_type: Typ vlákna.
-        :param ts: Časové razítko.
-        :param metadata: Metadata.
-        :param msg: Slovník zprávy.
-        """
         self.markAsDelivered(thread_id, message_object.uid)
 
-        if thread_id not in self.conversations:
-            conversation = Conversation(thread_id=thread_id)
-            self.conversations[thread_id] = conversation
-        else:
-            conversation = self.conversations[thread_id]
+        conversation = self.set_conversation(thread_id)
         
         # Uložení vlastních zpráv do historie
+        print(f"{Fore.YELLOW}author_id: {author_id}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}self.uid: {self.uid}{Style.RESET_ALL}")
         if author_id == self.uid:
             conversation.add_message("assistant", message_object.text)
             return
         
-        conversation.add_message("user", message_object.text, author_id)
-        
         # Zjištění charakteru pro dané vlákno na základě přezdívky
-        nickname = conversation.get_participant_nickname(author_id)  # předpokládá, že existuje tato metoda
-        character = self.available_characters.get(nickname, self.available_characters['NO_ONE'])
+        nickname = conversation.get_participant_nickname(author_id)
+        print(f"{Fore.YELLOW}Přezdívka: {nickname}{Style.RESET_ALL}")
+        bot_name = conversation.character.name
+        logger.debug(f"Bot name: {bot_name}")
+        character = self.available_characters.get(bot_name, self.available_characters['NO_ONE'])
+        logger.debug(f"Character: {character}")
         conversation.set_character(character)
+
+        
+        conversation.add_message("user", message_object.text, author_id)
 
         self.markAsRead(thread_id)
         
@@ -122,17 +90,18 @@ class ClientManager(Client):
 
 
     def handle_send(self, conversation: Conversation) -> str:
-        char: Character = conversation.character
-        mess = [{"role": "system", "content": char.character_setting}] + char.messages
+        logger.info(f"Handling send for {conversation}")
+        character = conversation.character
+        mess = [{"role": "system", "content": character.character_setting}] + conversation.memory.history
 
         try:
-            response = char.ai.get_response(mess)
+            response = character.ai.get_response(mess)
             return response
         except OpenAIError as e:
             print(f'{Fore.RED}Error: {e}{Style.RESET_ALL}\n')
 
             if "max tokens" in str(e):
-                char.messages = char.ai.prune_messages(char.messages, 0.5)
+                conversation.memory.manage_history(0.5)
                 print(f"{Fore.YELLOW}Právě jsem zapomněl půku své identity.{Style.RESET_ALL}")
 
             return self.handle_send(conversation)  # rekurzivní volání s ořezanými zprávami
@@ -141,49 +110,46 @@ class ClientManager(Client):
             return None
 
     def send_message(self, message, thread_id, thread_type=ThreadType.USER):
-        """
-        Odešle zprávu do zadaného vlákna.
-        
-        :param message: Text zprávy k odeslání.
-        :param thread_id: ID vlákna, do kterého se má zpráva odeslat.
-        :param thread_type: Typ vlákna (uživatel, skupina, stránka). Defaultní je uživatel.
-        """
         self.send(
             Message(text=message),
             thread_id=thread_id,
             thread_type=thread_type
         )
-
-        
+ 
     def initialize(self) -> None:
         self.load_characters()
-        logging.info(f"Loaded {len(self.available_characters)} characters.")
+        logger.info(f"Loaded {len(self.available_characters)} characters.")
 
     def run(self) -> None:
+        # handlery pro signály ukončení
+        signal.signal(signal.SIGINT, lambda signum, frame: self.shutdown())
+        signal.signal(signal.SIGTERM, lambda signum, frame: self.shutdown())
+        logger.info("For graceful shutdown press Ctrl+C or send SIGTERM.")
         super().listen()
-        logging.info("Bot is now running.")
+        logger.info("Bot is listening for new messages.")
 
     def shutdown(self) -> None:
-        logging.info("Shutting down the bot.")
         self.save_session()
-        os._exit(0) 
+        for _, conversation in self.conversations.items():
+            conversation.memory.save()
+        logger.info("Shutting down the bot.")
+        sys.exit(0)  
 
     def save_session(self, coookie_file=FB_COOKIES) -> None:
         session_cookies = self.getSession()
         with open(coookie_file, "w") as file:
             json.dump(session_cookies, file)
-        logging.info("Saved session cookies.")
+        logger.info("Saved session cookies.")
 
     def load_session(self, cookie_file=FB_COOKIES) -> dict | None:
-        print("Loading session cookies file.", cookie_file)
+        logger.info(f"Loading session cookies from file: {cookie_file}")
         if os.path.exists(cookie_file):
             with open(cookie_file, "r") as file:
                 session_cookies = json.load(file)
-            logging.info("Loaded session cookies.")
-            print(session_cookies)
+            logger.info("Loaded session cookies.")
             return session_cookies
         else:
-            logging.info("Session cookies not found.")
+            logger.info("Session cookies not found.")
             return None
         
     def load_characters(self):
@@ -194,21 +160,24 @@ class ClientManager(Client):
             full_path = os.path.join(characters_path, character_file)
             try:
                 character = self.load_character(full_path)  # Použije tvou funkci na načtení postavy
-                self.available_characters.append(character)
-                logging.info(f"Loaded character: {character.name}")
+                self.available_characters[character.name] = character
+                logger.info(f"Loaded character: {character.name}")
+                logger.debug(character.__dict__)
             except Exception as e:
-                logging.error(f"Failed to load character from {character_file}: {e}")
+                logger.error(f"Failed to load character from {character_file}: {e}")
+        self.available_characters['NO_ONE'] = Character(**NO_ONE)
 
-        logging.info(f"Total characters loaded: {len(self.available_characters)}")
+        logger.info(f"Total characters loaded: {len(self.available_characters)}")
 
     @staticmethod
-    def load_character(config_file: str):
+    def load_character(config_file: str) -> Character:
         config_file = os.path.join(ROOT_DIR, 'characters', config_file)
         character_dict = json_load(config_file)
 
-        if not character_dict or not character_dict.get('name') or not character_dict.get('character_setting'):
-            print(f"{Fore.YELLOW}Invalid or missing configuration file {config_file}. Defaulting to character 'No One'.{Style.RESET_ALL}")
-            character_dict = NO_ONE
+        mandatory_keys = ['name', 'character_setting']
+        if not all(key in character_dict for key in mandatory_keys):
+            logger.error(f"Invalid or missing configuration file {config_file}.")
+            logger.error(f"Please make sure that the file contains the following keys: {mandatory_keys}.")
 
         return Character(
             name=character_dict['name'],
@@ -218,3 +187,44 @@ class ClientManager(Client):
             logit_bias=character_dict.get('logit_bias'),
             presence_penalty=character_dict.get('presence_penalty')
         )
+    
+    def fetch_bot_name(self, thread: Thread) -> str:
+        print(f"{Fore.YELLOW}Fetching bot name...{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Thread: {thread}{Style.RESET_ALL}")
+        if thread.type == ThreadType.USER:
+            bot_user = thread.own_nickname
+        elif thread.type == ThreadType.GROUP:
+            bot_user = self.fetchUserInfo(self.uid)[self.uid]
+        return bot_user.nickname or bot_user.name
+    
+    def fetch_participants(self, thread: Thread) -> dict[str, dict[str, str|bool]]:
+        logging.info("Fetching participants...")
+        print(f"{Fore.YELLOW}Thread: {thread}{Style.RESET_ALL}")
+        
+        participants = {}
+        if thread.type == ThreadType.USER:
+            participants[thread.uid] = {
+                "name": thread.name or "",
+                "nickname": thread.nickname or "",
+                "is_friend": thread.is_friend,
+            }
+            participants[self.uid] = {
+                "name": "bot",
+                "nickname": thread.own_nickname or "",
+                "is_friend": True,
+            }
+
+        elif thread.type == ThreadType.GROUP:
+            user_ids = thread.participants
+            for user_id in user_ids:
+                user_info = self.fetchUserInfo(user_id)[user_id]
+                participants[user_id] = {
+                    "name": user_info.name or "",
+                    "nickname": thread.nicknames.get(user_id, ""),
+                    "is_friend": user_info.is_friend,
+                }
+        else:
+            logging.error(f"Unknown thread type: {thread.type}")
+
+        logging.info(f"Participants: {participants}")
+        return participants

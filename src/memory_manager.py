@@ -4,8 +4,8 @@ import os
 from typing import List, Dict
 from colorama import Fore, Style
 
-# Initialize logging
-logging.basicConfig(format=f'{Fore.LIGHTBLACK_EX}%(message)s{Style.RESET_ALL}', level=logging.INFO)
+from config import HYSTORY_DIR
+from log_formatter import CustomFormatter
 
 class MemoryManager:
     def __init__(self, memory_file: str):
@@ -14,14 +14,16 @@ class MemoryManager:
 
         :param memory_file: File path to store conversations.
         """
-        self.memory_file = memory_file
+        self.memory_file = os.path.join(HYSTORY_DIR, memory_file)
         self.history: List[Dict[str, str]] = self.load()  # Load existing conversations from the file.
 
     def save(self) -> None:
         """
         Save current conversation history to memory_file.
         """
-        with open(self.memory_file, "w", encoding="utf-8") as file:
+        if not os.path.exists(HYSTORY_DIR):
+            os.makedirs(HYSTORY_DIR)
+        with open(self.memory_file, "w") as file:
             json.dump(self.history, file, indent=2)
         logging.info(f"{Fore.YELLOW}Memory saved.{Style.RESET_ALL}")
 
@@ -30,17 +32,17 @@ class MemoryManager:
         Load conversations from memory_file, or create an empty list if the file does not exist.
         """
         if os.path.exists(self.memory_file):
-            with open(self.memory_file, "r", encoding="utf-8") as file:
+            with open(self.memory_file, "r") as file:
                 logging.info(f"{Fore.YELLOW}Memory loaded.{Style.RESET_ALL}")
                 return json.load(file)
         logging.info(f"{Fore.YELLOW}Memory not found, starting a new conversation.{Style.RESET_ALL}")
         return []
 
-    def add_message(self, role: str, participant: str, content: str) -> None:
+    def add_message(self, role: str, participant: str, text: str) -> None:
         """
         Add a new message to the history.
         """
-        new_message = {"role": role, "content": f"{participant}: {content}"}
+        new_message = {"role": role, "content": f"{participant}: {text}"}
         self.history.append(new_message)
         logging.info(f"{Fore.GREEN}New message added to memory: {new_message}{Style.RESET_ALL}")
 

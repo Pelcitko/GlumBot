@@ -37,8 +37,8 @@ Glum je chatbot založený na OpenAI, který komunikuje s uživateli přes rozhr
 
 ## Budoucí rozvoj
 
+- **Zabezpečení účtu**: Načítání hesla z konzole při startu aplikace, šifrování souboru cookies, aby bylo možné zamezit přístupu k účtu.
 - **Zpracování multimediálního obsahu**: Možnost zpracování multimediálního obsahu, jako jsou obrázky, videa a zvuky, aby byla konverzace více interaktivní a zajímavá.
-- **Různé režimy odpovědí**: Rozličné režimy odpovědí, například humoristický, seriózní, technický apod., aby byla interakce s Glumem pestrá a přizpůsobitelná.
 - **Rozpoznávání příkazů**: Rozpoznávání specifických příkazů a dotazů, aby bylo možné s Glumem interagovat na pokročilejší úrovni.
 
 Pro více informací o možnostech a nastavení knihovny `fbchat`, navštivte [dokumentaci knihovny fbchat](https://fbchat.readthedocs.io/).

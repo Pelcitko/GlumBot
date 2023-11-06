@@ -36,20 +36,46 @@ class AI:
         logging.info(f'Sending: {messages}')
 
         try:
-            response = openai.ChatCompletion.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                logit_bias=self.logit_bias,
-                presence_penalty=self.presence_penalty
-            )
+            # Vytvoření slovníku z atributů objektu a filtrování None hodnot
+            params = {key: value for key, value in vars(self).items() if value is not None}
+
+            # Přidej specifické parametry, které jsou vždy potřeba
+            params.update({
+                "model": self.model,
+                "messages": messages
+            })
+
+            # Zavolej OpenAI API s dynamicky sestavenými parametry
+            response = openai.ChatCompletion.create(**params)
         except Exception as e:
             logging.error(f'OpenAI API Error: {e}')
-            return "An error occurred."
+            return "🤕 An error occurred when calling my brain."
 
         logging.info(f'Received: {response}')
         return response['choices'][0]['message']['content'].strip()
+
+
+    # def get_response(self, messages: list[dict[str, str]]):
+    #     """
+    #     Fetch a response from the OpenAI API.
+    #     """
+    #     logging.info(f'Sending: {messages}')
+
+    #     try:
+    #         response = openai.ChatCompletion.create(
+    #             model=self.model,
+    #             messages=messages,
+    #             temperature=self.temperature,
+    #             max_tokens=self.max_tokens,
+    #             logit_bias=self.logit_bias,
+    #             presence_penalty=self.presence_penalty
+    #         )
+    #     except Exception as e:
+    #         logging.error(f'OpenAI API Error: {e}')
+    #         return "An error occurred."
+
+    #     logging.info(f'Received: {response}')
+    #     return response['choices'][0]['message']['content'].strip()
             
 
     def prune_messages(self, messages: list[dict[str, str]], prune_ratio: float) -> list[dict[str, str]]:
