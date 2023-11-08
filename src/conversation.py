@@ -12,6 +12,8 @@ init(autoreset=True)
 logging.basicConfig(level=logging.INFO, format=f"{Fore.LIGHTBLUE_EX}%(message)s{Style.RESET_ALL}")
 
 class Conversation:
+    pending_action = None  # Ukládáme příkaz čekající na potvrzení
+
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
@@ -93,30 +95,65 @@ class Conversation:
             return ""
         return f"{participant['nickname']} ({participant['name']})"
 
-    # def fetch_participants(self, thread: Thread) -> dict[str, dict[str, str|bool]]:
-    #     logging.info("Fetching participants...")
-    #     if thread is None:
-    #         thread = self.thread
-    #     # logging.info(f"Thread: {self.thread}")
-    #     participants = {}
-    #     if thread.type == ThreadType.USER:
-    #         participants[thread.uid] = {
-    #             "name": thread.name or "",
-    #             "nickname": thread.nickname or "",
-    #             "is_friend": thread.is_friend,
-    #         }
 
-    #     elif thread.type == ThreadType.GROUP:
-    #         user_ids = thread.participants
-    #         for user_id in user_ids:
-    #             user_info = self.thread.fetchUserInfo(user_id)[user_id]
-    #             participants[user_id] = {
-    #                 "name": user_info.name or "",
-    #                 "nickname": thread.nicknames.get(user_id, ""),
-    #                 "is_friend": user_info.is_friend,
-    #             }
-    #     else:
-    #         logging.error(f"Unknown thread type: {thread.type}")
+    @staticmethod
+    def clean_message(text):
+        """Odstraní tagy uživatelů ve tvaru @UživatelskéJméno z textu zprávy."""
+        # Zkontroluj, jestli text není prázdný nebo není textový typ
+        if not text or not isinstance(text, str):
+            return text
 
-    #     logging.info(f"Participants: {participants}")
-    #     return participants
+        # Odstranění tagů a trim whitespace
+        cleaned_text = re.sub(r'@\S+', '', text)
+        return cleaned_text
+
+    @staticmethod
+    def recognize_command(text):
+        commands = {
+            'help': r"(help|pomoc|\?|man|manual|návod|🆘)",
+            'about': r"(about|o tobě|představ se|info|informace|ℹ️)",
+            'list_characters': r"(list characters|ukaz postavy|ukázat osobnosti|vypsat charaktery|👥)",
+            'autoresponse': r"(autoresponse|auto-odpovědi|automatické odpovědi|zapnout auto|vypnout auto|💭|🗣️|🙊)",
+            'forget': r"(forget|zapomeň|smaž historii|vymazat paměť|🧹|🗑️)",
+            'status': r"(status|stav|jak funguješ|kontrola|🚦)",
+            'switch_character': r"(switch character|změnit charakter|přepnout osobnost|změna postavy|🎭)",
+            'mute': r"(mute|ztišit|ticho|neodpovídej|🔇)",
+            'unmute': r"(unmute|aktivuj|mluv|odpovídej|🔊)"
+        }
+        # Normalize the input text
+        normalized_text = text.lower()
+        for command, pattern in commands.items():
+            if re.search(pattern, normalized_text):
+                return command
+        return None  # If no command is recognized
+    
+    @staticmethod
+    def recognize_command(text):
+        # ... statická metoda rozpoznávající příkaz
+        pass
+
+    @staticmethod
+    def is_positive_confirmation(text):
+        positive_confirmations = ['ano', 'yes', 'jo', 'ok', '✔', 'správně', 'jasně', 'samozřejmě', 'to jo']
+        negative_confirmations = ['ne', 'no', 'nechci', '❌', 'nemyslím', 'ani náhodou', 'to ne']
+
+        # Převedení textu na malá písmena a odstranění bílých znaků pro jednodušší porovnání
+        text = text.strip().lower()
+
+        # Počítání výskytů
+        positive_count = sum(text.count(word) for word in positive_confirmations)
+        negative_count = sum(text.count(word) for word in negative_confirmations)
+
+        # Zjištění, jestli text obsahuje více kladných než záporných výrazů
+        confirmation_score = positive_count - negative_count
+
+        # Pokud je zpráva příliš dlouhá vzhledem k nalezeným výskytům, nebudeme rozhodovat
+        if len(text) > (positive_count + negative_count) * 13:
+            return None  # Znamená, že nemůžeme rozhodnout a možná se zeptáme znovu
+
+        return confirmation_score > 0  # True pokud je score kladné, False pokud záporné nebo nulové
+
+    @staticmethod
+    def is_positive_confirmation(text):
+        # ... statická metoda pro detekci kladné odpovědi
+        pass

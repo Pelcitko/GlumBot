@@ -1,7 +1,10 @@
 # character.py
 import logging
+import os
 from ai import AI
+from config import ROOT_DIR
 from log_formatter import CustomFormatter
+from tools import json_load
 
 
 class Character:
@@ -47,6 +50,25 @@ class Character:
         """Vrátí jméno postavy."""
         return self.name
 
+    @staticmethod
+    def load_character(config_file: str):
+        config_file = os.path.join(ROOT_DIR, 'characters', config_file)
+        character_dict = json_load(config_file)
+
+        mandatory_keys = ['name', 'character_setting']
+        if not all(key in character_dict for key in mandatory_keys):
+            logging.error(f"Invalid or missing configuration file {config_file}.")
+            logging.error(f"Please make sure that the file contains the following keys: {mandatory_keys}.")
+
+        return Character(
+            name=character_dict['name'],
+            character_setting=character_dict['character_setting'],
+            temperature=character_dict.get('temperature'),
+            max_tokens=character_dict.get('max_tokens'),
+            logit_bias=character_dict.get('logit_bias'),
+            presence_penalty=character_dict.get('presence_penalty')
+        )
+    
     # def save_conversation(self) -> None:
     #     """Uloží současnou konverzaci do souboru."""
     #     with open(self.memory, "w", encoding="utf-8") as file:

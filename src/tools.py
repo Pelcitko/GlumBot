@@ -1,12 +1,7 @@
 
 import json
-import logging
 import os
 
-from colorama import Fore, Style
-from character import Character
-
-from config import NO_ONE, ROOT_DIR
 
 
 def json_load(file_name) -> dict:

@@ -1,3 +1,4 @@
+import re
 import signal
 import sys
 from openai import OpenAIError
@@ -5,7 +6,7 @@ from character import Character  # Import Character třídy
 from colorama import Fore, Style, init
 from fbchat import Client, ThreadType
 from fbchat.models import Message, Thread
-from config import FB_COOKIES, NO_ONE, ROOT_DIR
+from config import FB_COOKIES, NO_ONE, PRESET, ROOT_DIR
 import json
 import logging
 import os
@@ -25,10 +26,12 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 class ClientManager(Client):
+    pending_action = None
+    pending_conversation = None
 
     def __init__(self, email, password):
         logger.info("Initializing the bot.")
-        super().__init__(email, password, max_tries=2, session_cookies=self.load_session())
+        super().__init__(email, password, max_tries=2, session_cookies=self.load_session(), logging_level=logging.INFO)
         self.available_characters: dict[str, Character] = {}  # postavy: {name: Character}
         self.conversations: dict[str, Conversation] = {}      # threads: {thread_id: Conversation}
 
@@ -58,30 +61,34 @@ class ClientManager(Client):
         return character
 
     def onMessage(self, mid=None, author_id=None, message=None, message_object: Message=None, thread_id=None, thread_type=None, ts=None, metadata=None, msg={}):
+        logger.debug(f"New message: {message_object.__dict__}")
+        conversation = self.set_conversation(thread_id)
         self.markAsDelivered(thread_id, message_object.uid)
 
-        conversation = self.set_conversation(thread_id)
+        print(f"{Fore.YELLOW}message: {message}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Text: {message_object.text}{Style.RESET_ALL}")
+        clean_text = conversation.clean_message(message)
         
-        # Uložení vlastních zpráv do historie
-        print(f"{Fore.YELLOW}author_id: {author_id}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}self.uid: {self.uid}{Style.RESET_ALL}")
         if author_id == self.uid:
-            conversation.add_message("assistant", message_object.text)
+            conversation.add_message("assistant", clean_text, self.uid)
             return
+        self.markAsRead(thread_id)
         
         # Zjištění charakteru pro dané vlákno na základě přezdívky
-        nickname = conversation.get_participant_nickname(author_id)
-        print(f"{Fore.YELLOW}Přezdívka: {nickname}{Style.RESET_ALL}")
         bot_name = conversation.character.name
-        logger.debug(f"Bot name: {bot_name}")
         character = self.available_characters.get(bot_name, self.available_characters['NO_ONE'])
-        logger.debug(f"Character: {character}")
         conversation.set_character(character)
 
-        
+        # Rozpoznání příkazu a potenciální potřeba potvrzení
+        command = Conversation.recognize_command(clean_text)
+        # Jestliže máme akci čekající na potvrzení
+        if conversation.pending_action:
+            self.handle_confirmation(message_object, conversation, clean_text)
+        else:
+            # Žádná akce nečeká na potvrzení, pokračujeme normálně
+            self.process_message(author_id, message_object, conversation)
         conversation.add_message("user", message_object.text, author_id)
 
-        self.markAsRead(thread_id)
         
         if conversation.auto_response or message_object.mentions:
             ai_response = self.handle_send(conversation)
@@ -92,7 +99,7 @@ class ClientManager(Client):
     def handle_send(self, conversation: Conversation) -> str:
         logger.info(f"Handling send for {conversation}")
         character = conversation.character
-        mess = [{"role": "system", "content": character.character_setting}] + conversation.memory.history
+        mess = [{"role": "system", "content": PRESET + character.character_setting}] + conversation.memory.history
 
         try:
             response = character.ai.get_response(mess)
@@ -159,7 +166,7 @@ class ClientManager(Client):
         for character_file in character_files:
             full_path = os.path.join(characters_path, character_file)
             try:
-                character = self.load_character(full_path)  # Použije tvou funkci na načtení postavy
+                character = Character.load_character(full_path)
                 self.available_characters[character.name] = character
                 logger.info(f"Loaded character: {character.name}")
                 logger.debug(character.__dict__)
@@ -169,25 +176,6 @@ class ClientManager(Client):
 
         logger.info(f"Total characters loaded: {len(self.available_characters)}")
 
-    @staticmethod
-    def load_character(config_file: str) -> Character:
-        config_file = os.path.join(ROOT_DIR, 'characters', config_file)
-        character_dict = json_load(config_file)
-
-        mandatory_keys = ['name', 'character_setting']
-        if not all(key in character_dict for key in mandatory_keys):
-            logger.error(f"Invalid or missing configuration file {config_file}.")
-            logger.error(f"Please make sure that the file contains the following keys: {mandatory_keys}.")
-
-        return Character(
-            name=character_dict['name'],
-            character_setting=character_dict['character_setting'],
-            temperature=character_dict.get('temperature'),
-            max_tokens=character_dict.get('max_tokens'),
-            logit_bias=character_dict.get('logit_bias'),
-            presence_penalty=character_dict.get('presence_penalty')
-        )
-    
     def fetch_bot_name(self, thread: Thread) -> str:
         print(f"{Fore.YELLOW}Fetching bot name...{Style.RESET_ALL}")
         print(f"{Fore.YELLOW}Thread: {thread}{Style.RESET_ALL}")
